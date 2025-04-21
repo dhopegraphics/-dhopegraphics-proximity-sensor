@@ -21,6 +21,7 @@ const webImplementation: ProximitySensorInterface = {
   },
   addListener: noop,
   removeAllListeners: noop,
+  removeListeners: noop,
 };
 
 const implementation: ProximitySensorInterface = Platform.select({
@@ -37,6 +38,7 @@ const implementation: ProximitySensorInterface = Platform.select({
         removeAllProximityListeners();
       }
     },
+    removeListeners: ProximitySensor.removeListeners,
   },
 });
 

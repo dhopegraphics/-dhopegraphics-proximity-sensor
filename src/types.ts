@@ -53,6 +53,11 @@ export interface ProximitySensorInterface {
    * @param eventName Only 'proximityChange' is supported
    */
   removeAllListeners(eventName: 'proximityChange'): void;
+  /**
+   * Required by NativeEventEmitter
+   * @param count Number of listeners to remove
+   */
+  removeListeners(count: number): void;
 }
 
 declare module 'react-native' {

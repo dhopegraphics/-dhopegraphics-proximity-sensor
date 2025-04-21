@@ -59,6 +59,19 @@ class ProximitySensorModule(context: ReactApplicationContext) : ReactContextBase
         }
     }
 
+    @ReactMethod
+    fun addListener(eventName: String) {
+        // Keep: Required for RN built-in EventEmitter
+    }
+
+    @ReactMethod
+    fun removeListeners(count: Int) {
+        // NativeEventEmitter requires this method
+        if (count == 0) {
+            stopProximitySensor()
+        }
+    }
+
     override fun onSensorChanged(event: SensorEvent?) {
         if (event?.sensor?.type != Sensor.TYPE_PROXIMITY) return
 
@@ -94,12 +107,4 @@ class ProximitySensorModule(context: ReactApplicationContext) : ReactContextBase
         super.onCatalystInstanceDestroy()
         stopProximitySensor()
     }
-}
-
-class ProximitySensorPackage : ReactPackage {
-    override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> =
-        listOf(ProximitySensorModule(reactContext))
-
-    override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> =
-        emptyList()
 }

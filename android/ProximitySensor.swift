@@ -66,4 +66,20 @@ class ProximitySensor: RCTEventEmitter {
             UIDevice.current.isProximityMonitoringEnabled = false
         }
     }
+    
+    @objc func addListener(_ eventName: String) {
+        // Keep: Required for RN built-in EventEmitter
+    }
+    
+    @objc func removeListeners(_ count: Int) {
+        // NativeEventEmitter requires this method
+        if count == 0 {
+            stopProximitySensor()
+        }
+    }
+    
+    override func invalidate() {
+        stopProximitySensor()
+        super.invalidate()
+    }
 }
