@@ -3,8 +3,8 @@ import { ConfigPlugin, withInfoPlist } from '@expo/config-plugins';
 /**
  * Config plugin to configure the ProximitySensor
  */
-const withProximitySensor: ConfigPlugin = (config:any) => {
-  return withInfoPlist(config, (mod:any) => {
+const withProximitySensor: ConfigPlugin = (config: any) => {
+  return withInfoPlist(config, (mod: any) => {
     // iOS doesn't require any special permissions for proximity sensor
     // But we ensure the UIBackgroundModes are not modified
     if (!mod.modResults.UIBackgroundModes) {

@@ -16,3 +16,4 @@ React Native package for proximity sensor detection with Expo support
 npm install @dhopegraphics/proximity-sensor
 # or
 yarn add @dhopegraphics/proximity-sensorS
+```

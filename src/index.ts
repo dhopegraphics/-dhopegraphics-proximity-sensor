@@ -15,11 +15,11 @@ const ProximitySensorModule = NativeModules.ProximitySensor
         get() {
           throw new Error(LINKING_ERROR);
         },
-      }
+      },
     );
 
 const eventEmitter = new NativeEventEmitter(
-  Platform.OS === 'ios' ? ProximitySensorModule : undefined
+  Platform.OS === 'ios' ? ProximitySensorModule : undefined,
 );
 
 /**

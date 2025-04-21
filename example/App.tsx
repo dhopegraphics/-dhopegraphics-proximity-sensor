@@ -32,7 +32,7 @@ export default function App() {
       setProximityData(null);
     } else {
       try {
-        const started = await ProximitySensor.startProximitySensor((data) => {
+        const started = await ProximitySensor.startProximitySensor(data => {
           setProximityData(data);
         });
         setIsActive(started);
@@ -48,32 +48,28 @@ export default function App() {
     <View style={styles.container}>
       <Text style={styles.title}>Proximity Sensor Demo</Text>
       <Text style={styles.platform}>Platform: {Platform.OS}</Text>
-      
+
       <Text style={styles.status}>
         Sensor available: {isAvailable === null ? 'Checking...' : isAvailable ? 'Yes' : 'No'}
       </Text>
-      
+
       {isAvailable && (
         <Button
           title={isActive ? 'Stop Proximity Sensor' : 'Start Proximity Sensor'}
           onPress={toggleProximitySensor}
         />
       )}
-      
+
       {proximityData && (
         <View style={styles.dataContainer}>
-          <Text style={styles.dataText}>
-            Object near: {proximityData.isNear ? 'Yes' : 'No'}
-          </Text>
-          <Text style={styles.dataText}>
-            Value: {proximityData.value.toFixed(2)}
-          </Text>
+          <Text style={styles.dataText}>Object near: {proximityData.isNear ? 'Yes' : 'No'}</Text>
+          <Text style={styles.dataText}>Value: {proximityData.value.toFixed(2)}</Text>
           <Text style={styles.dataText}>
             Timestamp: {new Date(proximityData.timestamp).toISOString()}
           </Text>
         </View>
       )}
-      
+
       {error && (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
