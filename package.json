@@ -1,6 +1,6 @@
 {
   "name": "@dhopegraphics/proximity-sensor",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "React Native & Expo package for accessing the device's proximity sensor with cross-platform support",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
