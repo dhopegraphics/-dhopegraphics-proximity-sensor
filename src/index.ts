@@ -1,88 +1,88 @@
-import { NativeEventEmitter, NativeModules, Platform } from 'react-native';
-import { ProximityData, ProximitySensorInterface, ProximitySensorError } from './types';
+import { NativeModules, Platform } from 'react-native';
+import { addProximityListener, removeAllProximityListeners } from './eventEmitter';
+import type { ProximityChangeCallback, ProximityData, ProximitySensorInterface } from './types';
 
-const LINKING_ERROR =
-  `The package '@dhopegraphics/proximity-sensor' doesn't seem to be linked. Make sure: \n\n` +
-  Platform.select({ ios: "- You have run 'pod install'\n", default: '' }) +
-  '- You rebuilt the app after installing the package\n' +
-  '- You are not using Expo Go\n';
+const { ProximitySensor } = NativeModules;
 
-const ProximitySensorModule = NativeModules.ProximitySensor
-  ? NativeModules.ProximitySensor
-  : new Proxy(
-      {},
-      {
-        get() {
-          throw new Error(LINKING_ERROR);
-        },
-      },
-    );
-
-const eventEmitter = new NativeEventEmitter(
-  Platform.OS === 'ios' ? ProximitySensorModule : undefined,
-);
-
-/**
- * Main proximity sensor API
- */
-const ProximitySensor: ProximitySensorInterface = {
-  async startProximitySensor(callback: (data: ProximityData) => void): Promise<boolean> {
-    if (Platform.OS === 'web') {
-      console.warn('Proximity sensor is not supported on web');
-      return false;
-    }
-
-    try {
-      const result = await ProximitySensorModule.startProximitySensor();
-      this.addListener(callback);
-      return result;
-    } catch (error) {
-      throw new Error(`Failed to start proximity sensor: ${error}`);
-    }
-  },
-
-  stopProximitySensor(): void {
-    if (Platform.OS === 'web') {
-      return;
-    }
-
-    try {
-      ProximitySensorModule.stopProximitySensor();
-      this.removeAllListeners();
-    } catch (error) {
-      throw new Error(`Failed to stop proximity sensor: ${error}`);
-    }
-  },
-
-  async isAvailable(): Promise<boolean> {
-    if (Platform.OS === 'web') {
-      return false;
-    }
-
-    try {
-      return await ProximitySensorModule.isAvailable();
-    } catch (error) {
-      console.error('Error checking proximity sensor availability:', error);
-      return false;
-    }
-  },
-
-  addListener(listener: (data: ProximityData) => void): void {
-    if (Platform.OS === 'web') {
-      return;
-    }
-
-    eventEmitter.addListener('proximityChange', listener);
-  },
-
-  removeAllListeners(): void {
-    if (Platform.OS === 'web') {
-      return;
-    }
-
-    eventEmitter.removeAllListeners('proximityChange');
-  },
+const noop = () => {};
+const warnWebUnsupported = () => {
+  console.warn('Proximity sensor is not supported on web platform');
 };
 
-export default ProximitySensor;
-export { ProximityData, ProximitySensorError };
+const webImplementation: ProximitySensorInterface = {
+  startProximitySensor: () => {
+    warnWebUnsupported();
+    return Promise.resolve(false);
+  },
+  stopProximitySensor: noop,
+  isAvailable: () => {
+    warnWebUnsupported();
+    return Promise.resolve(false);
+  },
+  addListener: noop,
+  removeAllListeners: noop,
+};
+
+const implementation: ProximitySensorInterface = Platform.select({
+  web: webImplementation,
+  default: {
+    ...ProximitySensor,
+    addListener: (eventName: 'proximityChange', callback: ProximityChangeCallback) => {
+      if (eventName === 'proximityChange') {
+        addProximityListener(callback);
+      }
+    },
+    removeAllListeners: (eventName: 'proximityChange') => {
+      if (eventName === 'proximityChange') {
+        removeAllProximityListeners();
+      }
+    },
+  },
+});
+
+/**
+ * Starts listening to proximity sensor changes
+ * @param callback Function to call when proximity changes
+ * @returns Promise that resolves to true if sensor is available and started
+ */
+export const startProximitySensor = (callback: ProximityChangeCallback): Promise<boolean> => {
+  return implementation.startProximitySensor(callback);
+};
+
+/**
+ * Stops listening to proximity sensor changes
+ */
+export const stopProximitySensor = (): void => {
+  implementation.stopProximitySensor();
+};
+
+/**
+ * Checks if proximity sensor is available on the device
+ * @returns Promise that resolves to boolean indicating availability
+ */
+export const isAvailable = (): Promise<boolean> => {
+  return implementation.isAvailable();
+};
+
+/**
+ * Adds a listener for proximity change events
+ * @param eventName Only 'proximityChange' is supported
+ * @param callback Function to call when event occurs
+ */
+export const addListener = implementation.addListener;
+
+/**
+ * Removes all listeners for proximity change events
+ * @param eventName Only 'proximityChange' is supported
+ */
+export const removeAllListeners = implementation.removeAllListeners;
+
+export type { ProximityData, ProximityChangeCallback };
+
+export default {
+  startProximitySensor,
+  stopProximitySensor,
+  isAvailable,
+  addListener,
+  removeAllListeners,
+} as const;

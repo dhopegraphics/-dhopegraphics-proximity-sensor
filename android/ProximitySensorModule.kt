@@ -8,80 +8,86 @@ import android.hardware.SensorManager
 import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule
 
-class ProximitySensorModule(reactContext: ReactApplicationContext) :
-    ReactContextBaseJavaModule(reactContext), SensorEventListener {
-    private var sensorManager: SensorManager? = null
-    private var proximitySensor: Sensor? = null
-    private var lastReading: WritableMap? = null
-
-    override fun getName(): String {
-        return "ProximitySensor"
+class ProximitySensorModule(context: ReactApplicationContext) : ReactContextBaseJavaModule(context), SensorEventListener {
+    private val sensorManager: SensorManager? by lazy {
+        reactApplicationContext.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
     }
+    private var proximitySensor: Sensor? = null
+    private var lastUpdateTime: Long = 0
+    private var isListening = false
+
+    override fun getName(): String = "ProximitySensor"
+
+    override fun getConstants(): Map<String, Any>? = mapOf(
+        "PROXIMITY_SENSOR_DELAY_NORMAL" to SensorManager.SENSOR_DELAY_NORMAL,
+        "PROXIMITY_SENSOR_DELAY_UI" to SensorManager.SENSOR_DELAY_UI,
+        "PROXIMITY_SENSOR_DELAY_GAME" to SensorManager.SENSOR_DELAY_GAME,
+        "PROXIMITY_SENSOR_DELAY_FASTEST" to SensorManager.SENSOR_DELAY_FASTEST
+    )
 
     @ReactMethod
     fun isAvailable(promise: Promise) {
-        try {
-            val sensorManager = reactApplicationContext.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
-            val hasProximitySensor = sensorManager?.getDefaultSensor(Sensor.TYPE_PROXIMITY) != null
-            promise.resolve(hasProximitySensor)
-        } catch (e: Exception) {
-            promise.reject("SENSOR_UNAVAILABLE", "Error checking proximity sensor availability", e)
-        }
+        promise.resolve(proximitySensor != null)
     }
 
     @ReactMethod
-    fun startProximitySensor(promise: Promise) {
+    fun startProximitySensor(delay: Int, promise: Promise) {
+        if (isListening) {
+            promise.resolve(true)
+            return
+        }
+
+        if (sensorManager == null || proximitySensor == null) {
+            promise.reject("SENSOR_UNAVAILABLE", "Proximity sensor not available on this device")
+            return
+        }
+
         try {
-            sensorManager = reactApplicationContext.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
-            proximitySensor = sensorManager?.getDefaultSensor(Sensor.TYPE_PROXIMITY)
-
-            if (proximitySensor == null) {
-                promise.reject("NO_SENSOR", "Proximity sensor not available")
-                return
-            }
-
-            sensorManager?.registerListener(this, proximitySensor, SensorManager.SENSOR_DELAY_NORMAL)
+            sensorManager?.registerListener(this, proximitySensor, delay)
+            isListening = true
             promise.resolve(true)
         } catch (e: Exception) {
-            promise.reject("SENSOR_ERROR", "Error starting proximity sensor", e)
+            promise.reject("SENSOR_ERROR", "Failed to start proximity sensor", e)
         }
     }
 
     @ReactMethod
     fun stopProximitySensor() {
-        try {
+        if (isListening) {
             sensorManager?.unregisterListener(this)
-            sensorManager = null
-            proximitySensor = null
-        } catch (e: Exception) {
-            // Log error but don't throw as this might be called during cleanup
-            reactApplicationContext
-                .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-                .emit("proximityError", "Error stopping proximity sensor: ${e.message}")
+            isListening = false
         }
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
         if (event?.sensor?.type != Sensor.TYPE_PROXIMITY) return
 
-        val isNear = event.values[0] < event.sensor.maximumRange
-        val timestamp = System.currentTimeMillis()
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastUpdateTime < 100) return // Throttle events to 10Hz max
+
+        lastUpdateTime = currentTime
+        val isNear = event.values[0] < (proximitySensor?.maximumRange ?: 0f) * 0.5
+        val value = event.values[0]
+        val timestamp = event.timestamp / 1000000 // Convert nanoseconds to milliseconds
 
         val params = Arguments.createMap().apply {
             putBoolean("isNear", isNear)
-            putDouble("value", event.values[0].toDouble())
+            putDouble("value", value.toDouble())
             putDouble("timestamp", timestamp.toDouble())
         }
 
-        lastReading = params
-
         reactApplicationContext
             .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-            .emit("proximityChange", params)
+            ?.emit("proximityChange", params)
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
         // Not used for proximity sensor
+    }
+
+    override fun initialize() {
+        super.initialize()
+        proximitySensor = sensorManager?.getDefaultSensor(Sensor.TYPE_PROXIMITY)
     }
 
     override fun onCatalystInstanceDestroy() {
@@ -91,11 +97,9 @@ class ProximitySensorModule(reactContext: ReactApplicationContext) :
 }
 
 class ProximitySensorPackage : ReactPackage {
-    override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> {
-        return listOf(ProximitySensorModule(reactContext))
-    }
+    override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> =
+        listOf(ProximitySensorModule(reactContext))
 
-    override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> {
-        return emptyList()
-    }
+    override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> =
+        emptyList()
 }

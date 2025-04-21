@@ -1,20 +1,17 @@
 import { ConfigPlugin, withInfoPlist } from '@expo/config-plugins';
+import { mergeContents } from '@expo/config-plugins/build/utils/generateCode';
 
 /**
- * Config plugin to configure the ProximitySensor
+ * Config plugin to configure the iOS and Android project for the proximity sensor
  */
-const withProximitySensor: ConfigPlugin = (config: any) => {
-  return withInfoPlist(config, (mod: any) => {
-    // iOS doesn't require any special permissions for proximity sensor
-    // But we ensure the UIBackgroundModes are not modified
-    if (!mod.modResults.UIBackgroundModes) {
-      mod.modResults.UIBackgroundModes = [];
-    }
-
-    // Android doesn't require any special permissions for proximity sensor
-
-    return mod;
+const withProximitySensor: ConfigPlugin = (config) => {
+  // iOS: No specific entitlements needed for proximity sensor
+  config = withInfoPlist(config, (config) => {
+    // Add any required Info.plist entries if needed
+    return config;
   });
+
+  return config;
 };
 
 export default withProximitySensor;
